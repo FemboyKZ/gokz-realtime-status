@@ -10,3 +10,6 @@
 	path = gokz
 	url = https://github.com/KZGlobalTeam/gokz.git
 	branch = master
+[submodule "sm-json"]
+	path = sm-json
+	url = https://github.com/clugg/sm-json
