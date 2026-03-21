@@ -1,10 +1,11 @@
 # vim: set sts=2 ts=8 sw=2 tw=99 et ft=python:
 import os, sys
 
-projectName = 'sm-extension'
+projectName = 'gokz-realtime-status'
 
 sourceFiles = [
   'extension.cpp',
+  'http_client.cpp',
 ]
 
 project = Extension.HL2Project(builder, projectName + '.ext')
@@ -20,6 +21,9 @@ project.sources += sourceFiles
 
 for cxx in builder.targets:
   binary = Extension.HL2Config(builder, project, projectName + '.ext', cxx)
-  binary.compiler.linkflags += ['psapi.lib'] if cxx.target.platform == 'windows' else ['-ldl']
+  if cxx.target.platform == 'windows':
+    binary.compiler.linkflags += ['psapi.lib', 'ws2_32.lib']
+  else:
+    binary.compiler.linkflags += ['-ldl', '-lpthread']
 
 Extension.extensions = builder.Add(project)

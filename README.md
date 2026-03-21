@@ -1,7 +1,7 @@
 
-# SM Extension template
+# GOKZ Realtime status
 
-## Building
+## Building Extension
 
 ### AMBuild
 
@@ -12,3 +12,15 @@ python ../configure.py --sm-path ../sourcemod --mms-path ../metamod-source --tar
 
 ambuild
 ```
+
+## Building Bridge plugin
+
+### SourceMod 1.11+
+
+1. Copy the contents of `/scripting/` to ``/addons/sourcemod/scripting/` wherever SM is installed.
+2. Run `compile.exe` (Windows) or `compile.sh` (Linux).
+3. Compiled plugin will be in `/scripting/compiled/`
+
+## Configuration
+
+TBA

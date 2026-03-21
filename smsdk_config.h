@@ -19,4 +19,12 @@
 #define SMEXT_LINK(name) SDKExtension *g_pExtensionIface = name;
 #define SMEXT_CONF_METAMOD
 
+/** Enable interfaces we need */
+#define SMEXT_ENABLE_FORWARDSYS
+#define SMEXT_ENABLE_PLAYERHELPERS
+#define SMEXT_ENABLE_GAMEHELPERS
+#define SMEXT_ENABLE_TIMERSYS
+#define SMEXT_ENABLE_THREADER
+#define SMEXT_ENABLE_PLUGINSYS
+
 #endif // _INCLUDE_SOURCEMOD_EXTENSION_CONFIG_H_
