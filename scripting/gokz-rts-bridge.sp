@@ -32,6 +32,9 @@ Handle g_hTimer = INVALID_HANDLE;
 public void OnPluginStart()
 {
 	RTS_SetGokzLoaded(true);
+
+	// Send server info immediately so extension has it even without a map change
+	SendServerInfo();
 }
 
 public void OnPluginEnd()
