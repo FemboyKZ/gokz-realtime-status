@@ -10,6 +10,7 @@
 
 #include <sourcemod>
 #include <gokz/core>
+#include <SteamWorks>
 #include <gokz-rts>
 
 #pragma semicolon 1
@@ -146,5 +147,16 @@ void SendServerInfo()
 		(hostip >> 8) & 0xFF,
 		hostip & 0xFF);
 
-	RTS_SetServerInfo(hostname, ip, port);
+	char version[64];
+	ConVar cvVersion = FindConVar("version");
+	if (cvVersion != null)
+		cvVersion.GetString(version, sizeof(version));
+	else
+		version = "";
+
+	int tickrate = RoundToNearest(1.0 / GetTickInterval());
+
+	bool secure = SteamWorks_IsVACEnabled();
+
+	RTS_SetServerInfo(hostname, ip, port, version, tickrate, secure);
 }

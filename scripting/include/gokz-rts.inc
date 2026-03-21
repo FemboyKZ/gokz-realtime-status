@@ -26,13 +26,16 @@ native void RTS_SetGokzLoaded(bool loaded);
 native void RTS_SetPlayerGokzData(int client, int mode, bool timerRunning, bool paused, float time, int course, int teleports);
 
 /**
- * Sends server info to the extension (hostname, IP, port).
+ * Sends server info to the extension.
  *
  * @param hostname    Server hostname string.
  * @param ip          Server IP address string (dotted notation).
  * @param port        Server port number.
+ * @param version     Game/server version string.
+ * @param tickrate    Server tickrate (e.g. 64, 128).
+ * @param secure      Whether VAC is enabled on this server.
  */
-native void RTS_SetServerInfo(const char[] hostname, const char[] ip, int port);
+native void RTS_SetServerInfo(const char[] hostname, const char[] ip, int port, const char[] version, int tickrate, bool secure);
 
 public Extension __ext_gokz_rts =
 {
