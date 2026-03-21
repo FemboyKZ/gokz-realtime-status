@@ -87,8 +87,8 @@ jobs:
           spcomp \
             "${{ github.workspace }}/project/scripting/gokz-rts-bridge.sp" \
             -i "${{ github.workspace }}/project/scripting/include" \
-            -i "${{ github.workspace }}/project/gokz/addons/sourcemod/scripting/include" \
             -i "${{ github.workspace }}/project/sm-json/addons/sourcemod/scripting/include" \
+            -i "${{ github.workspace }}/project/gokz/addons/sourcemod/scripting/include" \
             -i "$includePath" \
             -o "${{ github.workspace }}/project/build/gokz-rts-bridge.smx"
 
