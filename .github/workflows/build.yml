@@ -10,14 +10,17 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: ubuntu-22.04
+          - os: ubuntu-latest
             os_short: linux
             ext: .so
+            container: registry.gitlab.steamos.cloud/steamrt/sniper/sdk:latest
           - os: windows-latest
             os_short: windows
             ext: .dll
+            container: ''
       fail-fast: false
     runs-on: ${{ matrix.os }}
+    container: ${{ matrix.container || null }}
     name: ${{ matrix.os_short }}-x86
     steps:
       - uses: actions/checkout@v6
@@ -61,7 +64,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             gcc-multilib g++-multilib libstdc++6 lib32stdc++6 \
-            libc6-dev-i386 linux-libc-dev:i386
+            libc6-dev-i386 linux-libc-dev:i386 git
 
       - name: Build extension
         working-directory: project
