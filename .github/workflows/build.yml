@@ -44,18 +44,10 @@ jobs:
           path: metamod-source
 
       - uses: actions/setup-python@v6
+        if: runner.os != 'Linux'
         name: Setup Python
         with:
           python-version: '3.13'
-
-      - name: Install Python dependencies
-        run: python -m pip install --upgrade pip setuptools wheel
-
-      - name: Install AMBuild
-        run: |
-          git clone https://github.com/alliedmodders/ambuild.git
-          cd ambuild
-          python setup.py install --user
 
       - name: Install Linux dependencies
         if: runner.os == 'Linux'
@@ -64,14 +56,24 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             gcc-multilib g++-multilib libstdc++6 lib32stdc++6 \
-            libc6-dev-i386 linux-libc-dev:i386 git
+            libc6-dev-i386 linux-libc-dev:i386 git python3 python3-pip python3-setuptools
+
+      - name: Install Python dependencies
+        run: python3 -m pip install --upgrade pip setuptools wheel
+        if: runner.os != 'Linux'
+
+      - name: Install AMBuild
+        run: |
+          git clone https://github.com/alliedmodders/ambuild.git
+          cd ambuild
+          python3 setup.py install --user
 
       - name: Build extension
         working-directory: project
         shell: bash
         run: |
           mkdir build && cd build
-          python ../configure.py \
+          python3 ../configure.py \
             --sm-path="${{ github.workspace }}/sourcemod" \
             --mms-path="${{ github.workspace }}/metamod-source" \
             --enable-optimize \
