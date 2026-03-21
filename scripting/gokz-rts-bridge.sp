@@ -177,5 +177,6 @@ void SendServerInfo()
 		secure = SteamWorks_IsVACEnabled() ? 1 : 0;
 	}
 
+	LogMessage("[gokz-rts] SendServerInfo: hostname=%s ip=%s port=%d tickrate=%d secure=%d", hostname, ip, port, tickrate, secure);
 	RTS_SetServerInfo(hostname, ip, port, version, tickrate, secure);
 }

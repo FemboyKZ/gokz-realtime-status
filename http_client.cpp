@@ -81,7 +81,7 @@ int HttpPostJson(const std::string &url, const std::string &json, const std::str
 
 	HttpUrl parsed = ParseUrl(url);
 	if (!parsed.valid)
-		return -1;
+		return HTTP_ERR_INVALID_URL;
 
 	// Resolve host
 	struct addrinfo hints, *res = nullptr;
@@ -94,13 +94,13 @@ int HttpPostJson(const std::string &url, const std::string &json, const std::str
 	snprintf(portStr, sizeof(portStr), "%d", parsed.port);
 
 	if (getaddrinfo(parsed.host.c_str(), portStr, &hints, &res) != 0 || !res)
-		return -1;
+		return HTTP_ERR_DNS_FAILED;
 
 	socket_t sock = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
 	if (sock == INVALID_SOCK)
 	{
 		freeaddrinfo(res);
-		return -1;
+		return HTTP_ERR_SOCKET_FAILED;
 	}
 
 	// Set 10 second timeouts
@@ -120,7 +120,7 @@ int HttpPostJson(const std::string &url, const std::string &json, const std::str
 	{
 		freeaddrinfo(res);
 		CLOSE_SOCKET(sock);
-		return -1;
+		return HTTP_ERR_CONNECT_FAILED;
 	}
 	freeaddrinfo(res);
 
@@ -161,7 +161,7 @@ int HttpPostJson(const std::string &url, const std::string &json, const std::str
 		if (sent <= 0)
 		{
 			CLOSE_SOCKET(sock);
-			return -1;
+			return HTTP_ERR_SEND_FAILED;
 		}
 		totalSent += sent;
 	}
@@ -172,12 +172,12 @@ int HttpPostJson(const std::string &url, const std::string &json, const std::str
 	CLOSE_SOCKET(sock);
 
 	if (received <= 0)
-		return -1;
+		return HTTP_ERR_RECV_FAILED;
 
 	buf[received] = '\0';
 
 	// Parse "HTTP/1.x NNN"
-	int statusCode = -1;
+	int statusCode = HTTP_ERR_PARSE_FAILED;
 	if (strncmp(buf, "HTTP/", 5) == 0)
 	{
 		const char *space = strchr(buf, ' ');

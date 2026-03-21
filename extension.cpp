@@ -14,6 +14,8 @@ SMEXT_LINK(&g_SMExtension);
 // Configuration values (loaded from cfg file)
 static char g_apiUrl[256] = "";
 static char g_apiKey[256] = "";
+static char g_configIp[64] = "";
+static int g_configPort = 0;
 static float g_interval = 10.0f;
 
 // escape a string for JSON
@@ -122,6 +124,10 @@ bool CSMExtension::SDK_OnLoad(char *error, size_t maxlength, bool late)
 					snprintf(g_apiUrl, sizeof(g_apiUrl), "%s", value);
 				else if (strcmp(key, "api_key") == 0)
 					snprintf(g_apiKey, sizeof(g_apiKey), "%s", value);
+				else if (strcmp(key, "server_ip") == 0)
+					snprintf(g_configIp, sizeof(g_configIp), "%s", value);
+				else if (strcmp(key, "server_port") == 0)
+					g_configPort = atoi(value);
 				else if (strcmp(key, "interval") == 0)
 					g_interval = (float)atof(value);
 			}
@@ -170,6 +176,16 @@ void CSMExtension::SDK_OnAllLoaded()
 
 	if (g_apiUrl[0] != '\0')
 	{
+		// Apply config overrides for IP/port (hostip ConVar is often 0)
+		if (g_configIp[0] != '\0')
+		{
+			std::lock_guard<std::mutex> lock(m_dataMutex);
+			snprintf(m_ip, sizeof(m_ip), "%s", g_configIp);
+			if (g_configPort > 0)
+				m_port = g_configPort;
+			smutils->LogMessage(myself, "[gokz-rts] Using config IP: %s:%d", m_ip, m_port);
+		}
+
 		// Start game-thread snapshot timer (5s, updates cached data for worker)
 		m_pSnapshotTimer = timersys->CreateTimer(this, 5.0f, nullptr, TIMER_FLAG_REPEAT);
 
@@ -305,6 +321,10 @@ void CSMExtension::SnapshotPlugins()
 // server hibernation. Wakes on its own interval.
 void CSMExtension::WorkerThread()
 {
+	// Log initial state so we can debug connectivity
+	smutils->LogMessage(myself, "[gokz-rts] Worker thread started, target: %s (key=%s)",
+		g_apiUrl, g_apiKey[0] ? "set" : "NOT SET");
+
 	while (m_running.load())
 	{
 		{
@@ -399,9 +419,14 @@ void CSMExtension::SetServerInfo(const char *hostname, const char *ip, int port,
 	std::lock_guard<std::mutex> lock(m_dataMutex);
 	if (hostname)
 		snprintf(m_hostname, sizeof(m_hostname), "%s", hostname);
-	if (ip)
-		snprintf(m_ip, sizeof(m_ip), "%s", ip);
-	m_port = port;
+	// Only use plugin-provided IP/port if no config override
+	if (g_configIp[0] == '\0')
+	{
+		if (ip)
+			snprintf(m_ip, sizeof(m_ip), "%s", ip);
+		if (port > 0)
+			m_port = port;
+	}
 	if (version)
 		snprintf(m_serverVersion, sizeof(m_serverVersion), "%s", version);
 	m_tickrate = tickrate;
@@ -579,5 +604,34 @@ std::string CSMExtension::BuildPayload()
 // SendPayload, blocking HTTP POST (called from worker thread)
 void CSMExtension::SendPayload(const std::string &json)
 {
-	HttpPostJson(std::string(g_apiUrl), json, std::string(g_apiKey));
+	int status = HttpPostJson(std::string(g_apiUrl), json, std::string(g_apiKey));
+
+	if (status == 200)
+	{
+		// Success — only log periodically to avoid spam
+		static int s_successCount = 0;
+		if (++s_successCount == 1 || s_successCount % 30 == 0)
+			smutils->LogMessage(myself, "[gokz-rts] POST OK (count=%d, size=%u)", s_successCount, (unsigned)json.size());
+	}
+	else if (status > 0)
+	{
+		// Got HTTP response but not 200
+		smutils->LogError(myself, "[gokz-rts] POST %s returned HTTP %d (payload size=%u)", g_apiUrl, status, (unsigned)json.size());
+	}
+	else
+	{
+		// Network/DNS/connection failure
+		const char *errMsg = "unknown";
+		switch (status)
+		{
+			case HTTP_ERR_INVALID_URL:   errMsg = "invalid URL"; break;
+			case HTTP_ERR_DNS_FAILED:    errMsg = "DNS resolution failed"; break;
+			case HTTP_ERR_SOCKET_FAILED: errMsg = "socket creation failed"; break;
+			case HTTP_ERR_CONNECT_FAILED: errMsg = "connection refused/timeout"; break;
+			case HTTP_ERR_SEND_FAILED:   errMsg = "send failed"; break;
+			case HTTP_ERR_RECV_FAILED:   errMsg = "no response received"; break;
+			case HTTP_ERR_PARSE_FAILED:  errMsg = "invalid HTTP response"; break;
+		}
+		smutils->LogError(myself, "[gokz-rts] POST %s failed: %s (code=%d)", g_apiUrl, errMsg, status);
+	}
 }
