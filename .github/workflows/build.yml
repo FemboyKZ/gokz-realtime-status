@@ -78,10 +78,10 @@ jobs:
         run: |
           mkdir -p staging/addons/sourcemod/extensions
           find project/build -name '*${{ matrix.ext }}' -exec cp {} staging/addons/sourcemod/extensions/ \;
-          touch staging/addons/sourcemod/extensions/sm-extension.autoload
+          touch staging/addons/sourcemod/extensions/gokz-realtime-status.autoload
 
       - name: Upload artifact
         uses: actions/upload-artifact@v7
         with:
-          name: sm-extension-${{ matrix.os_short }}
+          name: gokz-realtime-status-${{ matrix.os_short }}
           path: staging/*
