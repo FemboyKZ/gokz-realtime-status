@@ -82,15 +82,18 @@ static cell_t Native_SetPlayerGokzData(IPluginContext *pContext, const cell_t *p
 	return 0;
 }
 
-// native void RTS_SetServerInfo(const char[] hostname, const char[] ip, int port);
+// native void RTS_SetServerInfo(const char[] hostname, const char[] ip, int port, const char[] version, int tickrate, bool secure);
 static cell_t Native_SetServerInfo(IPluginContext *pContext, const cell_t *params)
 {
-	char *hostname, *ip;
+	char *hostname, *ip, *version;
 	pContext->LocalToString(params[1], &hostname);
 	pContext->LocalToString(params[2], &ip);
 	int port = params[3];
+	pContext->LocalToString(params[4], &version);
+	int tickrate = params[5];
+	bool secure = (params[6] != 0);
 
-	g_SMExtension.SetServerInfo(hostname, ip, port);
+	g_SMExtension.SetServerInfo(hostname, ip, port, version, tickrate, secure);
 	return 0;
 }
 
@@ -238,14 +241,22 @@ void CSMExtension::SnapshotGameState()
 
 	m_maxClients = playerhelpers->GetMaxClients();
 	m_numPlayers = playerhelpers->GetNumPlayers();
+	m_botCount = 0;
 
 	m_lastSnapshotTime = timersys->GetTickedTime();
 
 	for (int i = 1; i <= m_maxClients; i++)
 	{
 		IGamePlayer *player = playerhelpers->GetGamePlayer(i);
-		if (!player || !player->IsConnected() || player->IsFakeClient())
+		if (!player || !player->IsConnected())
 		{
+			m_cachedPlayers[i].active = false;
+			continue;
+		}
+
+		if (player->IsFakeClient())
+		{
+			m_botCount++;
 			m_cachedPlayers[i].active = false;
 			continue;
 		}
@@ -387,7 +398,7 @@ void CSMExtension::SetGokzLoaded(bool loaded)
 }
 
 // SetServerInfo (called from companion plugin native)
-void CSMExtension::SetServerInfo(const char *hostname, const char *ip, int port)
+void CSMExtension::SetServerInfo(const char *hostname, const char *ip, int port, const char *version, int tickrate, bool secure)
 {
 	std::lock_guard<std::mutex> lock(m_dataMutex);
 	if (hostname)
@@ -395,6 +406,10 @@ void CSMExtension::SetServerInfo(const char *hostname, const char *ip, int port)
 	if (ip)
 		snprintf(m_ip, sizeof(m_ip), "%s", ip);
 	m_port = port;
+	if (version)
+		snprintf(m_serverVersion, sizeof(m_serverVersion), "%s", version);
+	m_tickrate = tickrate;
+	m_secure = secure;
 }
 
 // BuildPayload, reads ONLY from cached/atomic data.
@@ -440,6 +455,24 @@ std::string CSMExtension::BuildPayload()
 	snprintf(numBuf, sizeof(numBuf), "%d", m_maxClients);
 	json += "\"max_players\":";
 	json += numBuf;
+	json += ",";
+
+	snprintf(numBuf, sizeof(numBuf), "%d", m_botCount);
+	json += "\"bot_count\":";
+	json += numBuf;
+	json += ",";
+
+	json += "\"version\":\"";
+	json += JsonEscape(m_serverVersion[0] ? m_serverVersion : "");
+	json += "\",";
+
+	snprintf(numBuf, sizeof(numBuf), "%d", m_tickrate);
+	json += "\"tickrate\":";
+	json += numBuf;
+	json += ",";
+
+	json += "\"secure\":";
+	json += m_secure ? "true" : "false";
 	json += ",";
 
 	// Metamod version (safe, g_SMAPI is a global, GetApiVersions is const)

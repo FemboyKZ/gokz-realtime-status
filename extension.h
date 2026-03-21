@@ -97,7 +97,7 @@ public:
 	void SetGokzLoaded(bool loaded);
 
 	// Set server info from companion plugin
-	void SetServerInfo(const char *hostname, const char *ip, int port);
+	void SetServerInfo(const char *hostname, const char *ip, int port, const char *version, int tickrate, bool secure);
 
 private:
 	// Snapshot SM state into thread-safe cache (game thread only)
@@ -133,6 +133,11 @@ private:
 	char m_mapName[256] = {};
 	int m_numPlayers = 0;
 	int m_maxClients = 0;
+	int m_botCount = 0;
+
+	char m_serverVersion[64] = {};
+	int m_tickrate = 0;
+	bool m_secure = false;
 
 	// Per-player GOKZ data (written by companion plugin natives)
 	PlayerGokzData m_playerGokz[RTS_MAX_PLAYERS + 1];
