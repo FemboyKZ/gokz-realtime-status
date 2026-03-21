@@ -61,7 +61,7 @@ jobs:
             gcc-multilib g++-multilib libstdc++6 lib32stdc++6 \
             libc6-dev-i386 linux-libc-dev:i386
 
-      - name: Build
+      - name: Build extension
         working-directory: project
         shell: bash
         run: |
@@ -73,12 +73,34 @@ jobs:
             --targets=x86
           ambuild
 
+      - name: Setup SourcePawn Compiler
+        id: setup-sp
+        uses: rumblefrog/setup-sp@v1.2.4
+        with:
+          version: "1.12.x"
+
+      - name: Build bridge plugin
+        shell: bash
+        run: |
+          spcomp \
+            "${{ github.workspace }}/project/scripting/gokz-rts-bridge.sp" \
+            -i "${{ github.workspace }}/project/scripting/include" \
+            -i "${{ github.workspace }}/project/gokz/addons/sourcemod/scripting/include" \
+            -i "${{ steps.setup-sp.outputs.includes }}" \
+            -o "${{ github.workspace }}/project/build/gokz-rts-bridge.smx"
+
       - name: Stage release files
         shell: bash
         run: |
           mkdir -p staging/addons/sourcemod/extensions
+          mkdir -p staging/addons/sourcemod/plugins
+          mkdir -p staging/addons/sourcemod/scripting/include
+          mkdir -p staging/addons/sourcemod/configs
           find project/build -name '*${{ matrix.ext }}' -exec cp {} staging/addons/sourcemod/extensions/ \;
           touch staging/addons/sourcemod/extensions/gokz-realtime-status.autoload
+          cp project/build/gokz-rts-bridge.smx staging/addons/sourcemod/plugins/
+          cp project/scripting/include/gokz-rts.inc staging/addons/sourcemod/scripting/include/
+          cp project/configs/gokz-rts.cfg staging/addons/sourcemod/configs/
 
       - name: Upload artifact
         uses: actions/upload-artifact@v7
