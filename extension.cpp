@@ -16,8 +16,6 @@ static char g_apiUrl[256] = "";
 static char g_apiKey[256] = "";
 static float g_interval = 10.0f;
 
-static const char *g_modeNames[] = { "Vanilla", "SimpleKZ", "KZTimer" };
-
 // escape a string for JSON
 static std::string JsonEscape(const char *str)
 {
@@ -63,22 +61,17 @@ static cell_t Native_SetGokzLoaded(IPluginContext *pContext, const cell_t *param
 	return 0;
 }
 
-// native void RTS_SetPlayerGokzData(int client, int mode, bool timerRunning, bool paused, float time, int course, int teleports);
+// native void RTS_SetPlayerGokzData(int client, const char[] gokzJson);
 static cell_t Native_SetPlayerGokzData(IPluginContext *pContext, const cell_t *params)
 {
 	int client = params[1];
 	if (client < 1 || client > RTS_MAX_PLAYERS)
 		return pContext->ThrowNativeError("Invalid client index %d", client);
 
-	PlayerGokzData data;
-	data.mode = (GokzMode)params[2];
-	data.timerRunning = (params[3] != 0);
-	data.paused = (params[4] != 0);
-	data.time = sp_ctof(params[5]);
-	data.course = params[6];
-	data.teleportCount = params[7];
+	char *json;
+	pContext->LocalToString(params[2], &json);
 
-	g_SMExtension.SetPlayerGokzData(client, data);
+	g_SMExtension.SetPlayerGokzData(client, json);
 	return 0;
 }
 
@@ -275,8 +268,8 @@ void CSMExtension::SnapshotGameState()
 		const char *ip = player->GetIPAddress();
 		snprintf(cp.ip, sizeof(cp.ip), "%s", ip ? ip : "");
 
-		// Copy current GOKZ data
-		cp.gokz = m_playerGokz[i];
+		// Copy current GOKZ JSON data
+		snprintf(cp.gokzJson, sizeof(cp.gokzJson), "%s", m_playerGokzJson[i]);
 	}
 }
 
@@ -337,7 +330,7 @@ void CSMExtension::OnClientPutInServer(int client)
 
 	std::lock_guard<std::mutex> lock(m_dataMutex);
 	m_connectTime[client] = timersys->GetTickedTime();
-	m_playerGokz[client] = PlayerGokzData();
+	m_playerGokzJson[client][0] = '\0';
 }
 
 void CSMExtension::OnClientDisconnected(int client)
@@ -347,7 +340,7 @@ void CSMExtension::OnClientDisconnected(int client)
 
 	std::lock_guard<std::mutex> lock(m_dataMutex);
 	m_connectTime[client] = 0.0f;
-	m_playerGokz[client] = PlayerGokzData();
+	m_playerGokzJson[client][0] = '\0';
 	m_cachedPlayers[client].active = false;
 }
 
@@ -375,7 +368,7 @@ void CSMExtension::OnPluginUnloaded(IPlugin *plugin)
 
 		std::lock_guard<std::mutex> lock(m_dataMutex);
 		for (int i = 1; i <= RTS_MAX_PLAYERS; i++)
-			m_playerGokz[i] = PlayerGokzData();
+			m_playerGokzJson[i][0] = '\0';
 	}
 
 	// Re-snapshot plugin list on any plugin unload
@@ -383,12 +376,15 @@ void CSMExtension::OnPluginUnloaded(IPlugin *plugin)
 }
 
 // SetPlayerGokzData (called from native on game thread)
-void CSMExtension::SetPlayerGokzData(int client, const PlayerGokzData &data)
+void CSMExtension::SetPlayerGokzData(int client, const char *json)
 {
 	if (client >= 1 && client <= RTS_MAX_PLAYERS)
 	{
 		std::lock_guard<std::mutex> lock(m_dataMutex);
-		m_playerGokz[client] = data;
+		if (json && json[0])
+			snprintf(m_playerGokzJson[client], sizeof(m_playerGokzJson[client]), "%s", json);
+		else
+			m_playerGokzJson[client][0] = '\0';
 	}
 }
 
@@ -526,7 +522,6 @@ std::string CSMExtension::BuildPayload()
 	json += "\"players\":[";
 	{
 		bool first = true;
-		bool gokzLoaded = m_gokzLoaded.load();
 
 		for (int i = 1; i <= m_maxClients; i++)
 		{
@@ -564,41 +559,11 @@ std::string CSMExtension::BuildPayload()
 			json += "\"in_game\":";
 			json += cp.inGame ? "true" : "false";
 
-			if (gokzLoaded && cp.inGame && cp.gokz.mode != Mode_None)
+			// Embed prebuilt GOKZ JSON from bridge plugin (via sm-json)
+			if (cp.gokzJson[0] != '\0')
 			{
-				json += ",\"gokz\":{";
-
-				json += "\"mode\":\"";
-				if (cp.gokz.mode >= 0 && cp.gokz.mode < MODE_COUNT)
-					json += g_modeNames[cp.gokz.mode];
-				else
-					json += "unknown";
-				json += "\",";
-
-				json += "\"timer_running\":";
-				json += cp.gokz.timerRunning ? "true" : "false";
-				json += ",";
-
-				json += "\"paused\":";
-				json += cp.gokz.paused ? "true" : "false";
-				json += ",";
-
-				char gokzBuf[32];
-				snprintf(gokzBuf, sizeof(gokzBuf), "%.3f", cp.gokz.time);
-				json += "\"time\":";
-				json += gokzBuf;
-				json += ",";
-
-				snprintf(gokzBuf, sizeof(gokzBuf), "%d", cp.gokz.course);
-				json += "\"course\":";
-				json += gokzBuf;
-				json += ",";
-
-				snprintf(gokzBuf, sizeof(gokzBuf), "%d", cp.gokz.teleportCount);
-				json += "\"teleports\":";
-				json += gokzBuf;
-
-				json += "}";
+				json += ",\"gokz\":";
+				json += cp.gokzJson;
 			}
 
 			json += "}";

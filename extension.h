@@ -12,30 +12,8 @@
 // Max players in Source engine
 #define RTS_MAX_PLAYERS 65
 
-// GOKZ mode enum values (from gokz/core.inc)
-enum GokzMode
-{
-	Mode_Vanilla = 0,
-	Mode_SimpleKZ = 1,
-	Mode_KZTimer = 2,
-	MODE_COUNT = 3,
-	Mode_None = -1
-};
-
-// Per-player GOKZ state (set by companion plugin via natives)
-struct PlayerGokzData
-{
-	GokzMode mode;
-	bool timerRunning;
-	bool paused;
-	float time;
-	int course;
-	int teleportCount;
-
-	PlayerGokzData()
-		: mode(Mode_None), timerRunning(false), paused(false),
-		  time(0.0f), course(0), teleportCount(0) {}
-};
+// Buffer size for per-player GOKZ JSON string
+#define RTS_GOKZ_JSON_SIZE 512
 
 // Cached player info (snapshotted from game thread)
 struct CachedPlayer
@@ -46,12 +24,13 @@ struct CachedPlayer
 	char ip[64];
 	float connectTime; // engine time at connect
 	bool inGame;
-	PlayerGokzData gokz;
+	char gokzJson[RTS_GOKZ_JSON_SIZE];
 
 	CachedPlayer() : active(false), connectTime(0.0f), inGame(false) {
 		steamid[0] = '\0';
 		name[0] = '\0';
 		ip[0] = '\0';
+		gokzJson[0] = '\0';
 	}
 };
 
@@ -91,7 +70,7 @@ public:
 
 public:
 	// Set GOKZ data for a player (called from native on game thread)
-	void SetPlayerGokzData(int client, const PlayerGokzData &data);
+	void SetPlayerGokzData(int client, const char *json);
 
 	// Set whether GOKZ is available
 	void SetGokzLoaded(bool loaded);
@@ -139,8 +118,8 @@ private:
 	int m_tickrate = 0;
 	int m_secure = -1; // -1=unknown, 0=insecure, 1=secure
 
-	// Per-player GOKZ data (written by companion plugin natives)
-	PlayerGokzData m_playerGokz[RTS_MAX_PLAYERS + 1];
+	// Per-player GOKZ data as JSON strings (written by companion plugin natives)
+	char m_playerGokzJson[RTS_MAX_PLAYERS + 1][RTS_GOKZ_JSON_SIZE];
 	float m_connectTime[RTS_MAX_PLAYERS + 1] = {};
 
 	// Snapshotted data (written by game thread, read by worker thread)

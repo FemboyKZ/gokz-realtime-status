@@ -13,17 +13,14 @@
 native void RTS_SetGokzLoaded(bool loaded);
 
 /**
- * Sends a player's current GOKZ data to the extension.
+ * Sends a player's current GOKZ data to the extension as a JSON string.
+ * The extension embeds this directly into the payload without parsing.
+ * Use sm-json to build the object with keys: mode, timer_running, paused, time, course, teleports.
  *
- * @param client        Client index.
- * @param mode          GOKZ mode (0=Vanilla, 1=SimpleKZ, 2=KZTimer).
- * @param timerRunning  Whether the player's timer is running.
- * @param paused        Whether the player is paused.
- * @param time          Current timer time in seconds.
- * @param course        Current course number.
- * @param teleports     Number of teleports used.
+ * @param client    Client index.
+ * @param gokzJson  JSON-encoded string of GOKZ player data.
  */
-native void RTS_SetPlayerGokzData(int client, int mode, bool timerRunning, bool paused, float time, int course, int teleports);
+native void RTS_SetPlayerGokzData(int client, const char[] gokzJson);
 
 /**
  * Sends server info to the extension.

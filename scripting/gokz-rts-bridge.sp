@@ -11,6 +11,7 @@
 #include <sourcemod>
 #include <gokz/core>
 #include <gokz-rts>
+#include <json>
 
 #undef REQUIRE_EXTENSIONS
 #include <SteamWorks>
@@ -66,14 +67,7 @@ public Action Timer_UpdateGokzData(Handle timer)
 		if (!IsClientInGame(client) || IsFakeClient(client))
 			continue;
 
-		int mode = GOKZ_GetCoreOption(client, Option_Mode);
-		bool timerRunning = GOKZ_GetTimerRunning(client);
-		bool paused = GOKZ_GetPaused(client);
-		float time = GOKZ_GetTime(client);
-		int course = GOKZ_GetCourse(client);
-		int teleports = GOKZ_GetTeleportCount(client);
-
-		RTS_SetPlayerGokzData(client, mode, timerRunning, paused, time, course, teleports);
+		SendClientGokzData(client);
 	}
 
 	return Plugin_Continue;
@@ -120,6 +114,11 @@ void UpdateClientGokzData(int client)
 	if (!IsClientInGame(client) || IsFakeClient(client))
 		return;
 
+	SendClientGokzData(client);
+}
+
+void SendClientGokzData(int client)
+{
 	int mode = GOKZ_GetCoreOption(client, Option_Mode);
 	bool timerRunning = GOKZ_GetTimerRunning(client);
 	bool paused = GOKZ_GetPaused(client);
@@ -127,7 +126,20 @@ void UpdateClientGokzData(int client)
 	int course = GOKZ_GetCourse(client);
 	int teleports = GOKZ_GetTeleportCount(client);
 
-	RTS_SetPlayerGokzData(client, mode, timerRunning, paused, time, course, teleports);
+	JSON_Object obj = new JSON_Object();
+	obj.SetString("mode", gC_ModeNames[mode]);
+	obj.SetBool("timer_running", timerRunning);
+	obj.SetBool("paused", paused);
+	obj.SetFloat("time", time);
+	obj.SetInt("course", course);
+	obj.SetInt("teleports", teleports);
+
+	int size = json_encode_size(obj);
+	char[] buffer = new char[size];
+	json_encode(obj, buffer, size);
+	json_cleanup(obj);
+
+	RTS_SetPlayerGokzData(client, buffer);
 }
 
 void SendServerInfo()
