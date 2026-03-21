@@ -33,9 +33,9 @@ native void RTS_SetPlayerGokzData(int client, int mode, bool timerRunning, bool 
  * @param port        Server port number.
  * @param version     Game/server version string.
  * @param tickrate    Server tickrate (e.g. 64, 128).
- * @param secure      Whether VAC is enabled on this server.
+ * @param secure      VAC status: 1=secure, 0=insecure, -1=unknown.
  */
-native void RTS_SetServerInfo(const char[] hostname, const char[] ip, int port, const char[] version, int tickrate, bool secure);
+native void RTS_SetServerInfo(const char[] hostname, const char[] ip, int port, const char[] version, int tickrate, int secure);
 
 public Extension __ext_gokz_rts =
 {

@@ -82,7 +82,7 @@ static cell_t Native_SetPlayerGokzData(IPluginContext *pContext, const cell_t *p
 	return 0;
 }
 
-// native void RTS_SetServerInfo(const char[] hostname, const char[] ip, int port, const char[] version, int tickrate, bool secure);
+// native void RTS_SetServerInfo(const char[] hostname, const char[] ip, int port, const char[] version, int tickrate, int secure);
 static cell_t Native_SetServerInfo(IPluginContext *pContext, const cell_t *params)
 {
 	char *hostname, *ip, *version;
@@ -91,7 +91,7 @@ static cell_t Native_SetServerInfo(IPluginContext *pContext, const cell_t *param
 	int port = params[3];
 	pContext->LocalToString(params[4], &version);
 	int tickrate = params[5];
-	bool secure = (params[6] != 0);
+	int secure = params[6];
 
 	g_SMExtension.SetServerInfo(hostname, ip, port, version, tickrate, secure);
 	return 0;
@@ -398,7 +398,7 @@ void CSMExtension::SetGokzLoaded(bool loaded)
 }
 
 // SetServerInfo (called from companion plugin native)
-void CSMExtension::SetServerInfo(const char *hostname, const char *ip, int port, const char *version, int tickrate, bool secure)
+void CSMExtension::SetServerInfo(const char *hostname, const char *ip, int port, const char *version, int tickrate, int secure)
 {
 	std::lock_guard<std::mutex> lock(m_dataMutex);
 	if (hostname)
@@ -472,7 +472,10 @@ std::string CSMExtension::BuildPayload()
 	json += ",";
 
 	json += "\"secure\":";
-	json += m_secure ? "true" : "false";
+	if (m_secure < 0)
+		json += "null";
+	else
+		json += m_secure ? "true" : "false";
 	json += ",";
 
 	// Metamod version (safe, g_SMAPI is a global, GetApiVersions is const)

@@ -10,8 +10,11 @@
 
 #include <sourcemod>
 #include <gokz/core>
-#include <SteamWorks>
 #include <gokz-rts>
+
+#undef REQUIRE_EXTENSIONS
+#include <SteamWorks>
+#define REQUIRE_EXTENSIONS
 
 #pragma semicolon 1
 #pragma newdecls required
@@ -156,7 +159,11 @@ void SendServerInfo()
 
 	int tickrate = RoundToNearest(1.0 / GetTickInterval());
 
-	bool secure = SteamWorks_IsVACEnabled();
+	int secure = -1; // unknown
+	if (GetFeatureStatus(FeatureType_Native, "SteamWorks_IsVACEnabled") == FeatureStatus_Available)
+	{
+		secure = SteamWorks_IsVACEnabled() ? 1 : 0;
+	}
 
 	RTS_SetServerInfo(hostname, ip, port, version, tickrate, secure);
 }
