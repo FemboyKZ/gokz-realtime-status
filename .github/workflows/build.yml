@@ -67,6 +67,7 @@ jobs:
           git clone https://github.com/alliedmodders/ambuild.git
           cd ambuild
           python3 setup.py install --user
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
 
       - name: Build extension
         working-directory: project
@@ -74,8 +75,8 @@ jobs:
         run: |
           mkdir build && cd build
           python3 ../configure.py \
-            --sm-path="${{ github.workspace }}/sourcemod" \
-            --mms-path="${{ github.workspace }}/metamod-source" \
+            --sm-path="$GITHUB_WORKSPACE/sourcemod" \
+            --mms-path="$GITHUB_WORKSPACE/metamod-source" \
             --enable-optimize \
             --targets=x86
           ambuild
@@ -90,12 +91,12 @@ jobs:
         shell: bash
         run: |
           spcomp \
-            "${{ github.workspace }}/project/scripting/gokz-rts-bridge.sp" \
-            -i "${{ github.workspace }}/project/scripting/include" \
-            -i "${{ github.workspace }}/project/sm-json/addons/sourcemod/scripting/include" \
-            -i "${{ github.workspace }}/project/gokz/addons/sourcemod/scripting/include" \
+            "$GITHUB_WORKSPACE/project/scripting/gokz-rts-bridge.sp" \
+            -i "$GITHUB_WORKSPACE/project/scripting/include" \
+            -i "$GITHUB_WORKSPACE/project/sm-json/addons/sourcemod/scripting/include" \
+            -i "$GITHUB_WORKSPACE/project/gokz/addons/sourcemod/scripting/include" \
             -i "$includePath" \
-            -o "${{ github.workspace }}/project/build/gokz-rts-bridge.smx"
+            -o "$GITHUB_WORKSPACE/project/build/gokz-rts-bridge.smx"
 
       - name: Stage release files
         shell: bash
