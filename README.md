@@ -1,19 +1,7 @@
 
 # GOKZ Realtime status
 
-## Building Extension
-
-### AMBuild
-
-```py
-mkdir build && cd build
-
-python ../configure.py --sm-path ../sourcemod --mms-path ../metamod-source --targets x86
-
-ambuild
-```
-
-## Building Bridge plugin
+## Building
 
 ### SourceMod 1.11+
 

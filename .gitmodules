@@ -1,15 +1,10 @@
-[submodule "metamod-source"]
-	path = metamod-source
-	url = https://github.com/alliedmodders/metamod-source.git
-	branch = 1.12-dev
-[submodule "sourcemod"]
-	path = sourcemod
-	url = https://github.com/alliedmodders/sourcemod.git
-	branch = 1.12-dev
 [submodule "gokz"]
 	path = gokz
 	url = https://github.com/KZGlobalTeam/gokz.git
 	branch = master
-[submodule "sm-json"]
-	path = sm-json
-	url = https://github.com/clugg/sm-json
+[submodule "sm-ext-json"]
+	path = sm-ext-json
+	url = https://github.com/ProjectSky/sm-ext-json.git
+[submodule "sm-ext-websocket"]
+	path = sm-ext-websocket
+	url = https://github.com/ProjectSky/sm-ext-websocket.git

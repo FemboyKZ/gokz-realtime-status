@@ -7,79 +7,12 @@ on:
     branches: ['*']
 jobs:
   build:
-    strategy:
-      matrix:
-        include:
-          - os: ubuntu-latest
-            os_short: linux
-            ext: .so
-            container: registry.gitlab.steamos.cloud/steamrt/sniper/sdk:latest
-          - os: windows-latest
-            os_short: windows
-            ext: .dll
-            container: ''
-      fail-fast: false
-    runs-on: ${{ matrix.os }}
-    container: ${{ matrix.container || null }}
-    name: ${{ matrix.os_short }}-x86
+    runs-on: ubuntu-latest
+    name: compile
     steps:
       - uses: actions/checkout@v6
         with:
           submodules: recursive
-          path: project
-
-      - name: Checkout SourceMod
-        uses: actions/checkout@v6
-        with:
-          repository: alliedmodders/sourcemod
-          ref: 1.12-dev
-          submodules: recursive
-          path: sourcemod
-
-      - name: Checkout Metamod:Source
-        uses: actions/checkout@v6
-        with:
-          repository: alliedmodders/metamod-source
-          ref: 1.12-dev
-          path: metamod-source
-
-      - uses: actions/setup-python@v6
-        if: runner.os != 'Linux'
-        name: Setup Python
-        with:
-          python-version: '3.13'
-
-      - name: Install Linux dependencies
-        if: runner.os == 'Linux'
-        run: |
-          sudo dpkg --add-architecture i386
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            gcc-multilib g++-multilib libstdc++6 lib32stdc++6 \
-            libc6-dev-i386 linux-libc-dev:i386 git python3 python3-pip python3-setuptools
-
-      - name: Install Python dependencies
-        run: python3 -m pip install --upgrade pip setuptools wheel
-        if: runner.os != 'Linux'
-
-      - name: Install AMBuild
-        run: |
-          git clone https://github.com/alliedmodders/ambuild.git
-          cd ambuild
-          python3 setup.py install --user
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
-
-      - name: Build extension
-        working-directory: project
-        shell: bash
-        run: |
-          mkdir build && cd build
-          python3 ../configure.py \
-            --sm-path="$GITHUB_WORKSPACE/sourcemod" \
-            --mms-path="$GITHUB_WORKSPACE/metamod-source" \
-            --enable-optimize \
-            --targets=x86
-          ambuild
 
       - name: Setup SourcePawn Compiler
         id: setup-sp
@@ -87,34 +20,29 @@ jobs:
         with:
           version: "1.12.x"
 
-      - name: Build bridge plugin
+      - name: Compile plugin
         shell: bash
         run: |
+          mkdir -p build
           spcomp \
-            "$GITHUB_WORKSPACE/project/scripting/gokz-rts-bridge.sp" \
-            -i "$GITHUB_WORKSPACE/project/scripting/include" \
-            -i "$GITHUB_WORKSPACE/project/sm-json/addons/sourcemod/scripting/include" \
-            -i "$GITHUB_WORKSPACE/project/gokz/addons/sourcemod/scripting/include" \
+            "scripting/gokz-rts.sp" \
+            -i "sm-ext-json/scripting/include" \
+            -i "sm-ext-websocket/scripting/include" \
+            -i "gokz/addons/sourcemod/scripting/include" \
             -i "$includePath" \
-            -o "$GITHUB_WORKSPACE/project/build/gokz-rts-bridge.smx"
+            -o "build/gokz-rts.smx"
 
       - name: Stage release files
-        shell: bash
         run: |
-          mkdir -p staging/addons/sourcemod/extensions
           mkdir -p staging/addons/sourcemod/plugins
-          mkdir -p staging/addons/sourcemod/scripting/include
           mkdir -p staging/addons/sourcemod/configs
-          find project/build -name '*${{ matrix.ext }}' -exec cp {} staging/addons/sourcemod/extensions/ \;
-          touch staging/addons/sourcemod/extensions/gokz-realtime-status.autoload
-          cp project/build/gokz-rts-bridge.smx staging/addons/sourcemod/plugins/
-          cp project/scripting/include/gokz-rts.inc staging/addons/sourcemod/scripting/include/
-          cp project/configs/gokz-rts.cfg staging/addons/sourcemod/configs/
+          cp build/gokz-rts.smx staging/addons/sourcemod/plugins/
+          cp configs/gokz-rts.cfg staging/addons/sourcemod/configs/
 
       - name: Upload artifact
         uses: actions/upload-artifact@v7
         with:
-          name: gokz-realtime-status-${{ matrix.os_short }}
+          name: gokz-realtime-status
           path: staging/*
 
   release:
@@ -124,27 +52,17 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Download Linux artifact
+      - name: Download artifact
         uses: actions/download-artifact@v7
         with:
-          name: gokz-realtime-status-linux
-          path: linux
+          name: gokz-realtime-status
+          path: release
 
-      - name: Download Windows artifact
-        uses: actions/download-artifact@v7
-        with:
-          name: gokz-realtime-status-windows
-          path: windows
-
-      - name: Create archives
-        run: |
-          cd linux && tar -czf ../gokz-realtime-status-linux.tar.gz . && cd ..
-          cd windows && zip -r ../gokz-realtime-status-windows.zip . && cd ..
+      - name: Create archive
+        run: cd release && tar -czf ../gokz-realtime-status.tar.gz .
 
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
-          files: |
-            gokz-realtime-status-linux.tar.gz
-            gokz-realtime-status-windows.zip
+          files: gokz-realtime-status.tar.gz
