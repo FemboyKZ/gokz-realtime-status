@@ -21,6 +21,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
+          submodules: recursive
           path: project
 
       - name: Checkout SourceMod
