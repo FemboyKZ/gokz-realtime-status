@@ -187,6 +187,7 @@ void SendReport()
 	HttpRequest req = new HttpRequest(g_apiUrl);
 	req.Timeout = 10000;
 	req.KeepAlive = true;
+	req.FollowRedirect = false; // POST→GET downgrade on 301/302 redirects breaks our request
 
 	if (g_tlsCAFile[0] != '\0')
 		req.SetTLSCAFile(g_tlsCAFile);
@@ -227,6 +228,8 @@ void OnHttpResponse(HttpRequest http, const char[] body, int statusCode, int bod
 	{
 		g_failCount++;
 		LogError("[gokz-rts] POST HTTP %d from %s: %.512s (fail #%d)", statusCode, g_apiUrl, body, g_failCount);
+		if (statusCode >= 301 && statusCode <= 308)
+			LogError("[gokz-rts] Redirect detected - update api_url in config to the final URL (e.g. https:// instead of http://)");
 	}
 
 	// Handle is freed by the extension after this callback returns.
@@ -309,23 +312,13 @@ JSONObject BuildServerObject()
 	server.SetInt("max_players", MaxClients);
 	server.SetInt("bot_count", botCount);
 
-	// Game version
-	// In CSGO, "version" is a console command, not a ConVar.
-	// Use ServerCommandEx to capture its output.
+	// Game version ("version" is a command, not a ConVar — use ServerCommandEx)
 	char version[256];
-	if (CommandExists("version"))
-	{
-		ServerCommandEx(version, sizeof(version), "version");
-		// Output is multi-line; extract just the first line
-		int nl = FindCharInString(version, '\n');
-		if (nl != -1)
-			version[nl] = '\0';
-		TrimString(version);
-	}
-	else
-	{
-		version[0] = '\0';
-	}
+	ServerCommandEx(version, sizeof(version), "version");
+	int nl = FindCharInString(version, '\n');
+	if (nl != -1)
+		version[nl] = '\0';
+	TrimString(version);
 	server.SetString("version", version);
 
 	// Tickrate
