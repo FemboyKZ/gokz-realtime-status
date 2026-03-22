@@ -1,10 +1,10 @@
 [submodule "gokz"]
 	path = gokz
-	url = https://github.com/KZGlobalTeam/gokz.git
-	branch = master
+	url = https://github.com/FemboyKZ/gokz.git
+	branch = fkz
 [submodule "sm-ext-json"]
 	path = sm-ext-json
-	url = https://github.com/ProjectSky/sm-ext-json.git
+	url = https://github.com/FemboyKZ/sm-ext-json.git
 [submodule "sm-ext-websocket"]
 	path = sm-ext-websocket
-	url = https://github.com/ProjectSky/sm-ext-websocket.git
+	url = https://github.com/FemboyKZ/sm-ext-websocket.git
