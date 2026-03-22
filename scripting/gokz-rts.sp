@@ -69,6 +69,15 @@ static Handle g_reportTimer = INVALID_HANDLE;
 static char g_osName[16];
 static int g_successCount;
 
+// Cached static server info (refreshed once per map)
+static char g_cachedHostname[256];
+static char g_cachedVersion[256];
+static char g_cachedMMVersion[64];
+static int g_cachedTickrate;
+static bool g_cachedSecure;
+static bool g_cachedSecureAvailable;
+static JSONArray g_cachedPlugins = null;
+
 //  Lifecycle
 
 public void OnPluginStart()
@@ -101,6 +110,8 @@ public void OnMapStart()
 {
 	if (g_apiUrl[0] == '\0')
 		return;
+
+	CacheStaticServerInfo();
 
 	StopReportTimer();
 	g_reportTimer = CreateTimer(g_interval, Timer_Report, _, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
@@ -310,6 +321,47 @@ void OnHttpResponse(HttpRequest http, const char[] body, int statusCode, int bod
 	// Handle is freed by the extension after this callback returns.
 }
 
+//  Static Info Cache
+
+void CacheStaticServerInfo()
+{
+	// Hostname
+	ConVar cvHostname = FindConVar("hostname");
+	if (cvHostname != null)
+		cvHostname.GetString(g_cachedHostname, sizeof(g_cachedHostname));
+	else
+		strcopy(g_cachedHostname, sizeof(g_cachedHostname), "unknown");
+
+	// Game version ("version" is a command, not a ConVar)
+	ServerCommandEx(g_cachedVersion, sizeof(g_cachedVersion), "version");
+	int nl = FindCharInString(g_cachedVersion, '\n');
+	if (nl != -1)
+		g_cachedVersion[nl] = '\0';
+	TrimString(g_cachedVersion);
+
+	// Tickrate
+	g_cachedTickrate = RoundToNearest(1.0 / GetTickInterval());
+
+	// Secure (VAC status via SteamWorks)
+	g_cachedSecureAvailable = (GetFeatureStatus(FeatureType_Native, "SteamWorks_IsVACEnabled") == FeatureStatus_Available);
+	if (g_cachedSecureAvailable)
+		g_cachedSecure = SteamWorks_IsVACEnabled();
+
+	// MetaMod version
+	ConVar cvMM = FindConVar("metamod_version");
+	if (cvMM != null)
+		cvMM.GetString(g_cachedMMVersion, sizeof(g_cachedMMVersion));
+	else
+		g_cachedMMVersion[0] = '\0';
+
+	// Plugins list
+	if (g_cachedPlugins != null)
+		delete g_cachedPlugins;
+	g_cachedPlugins = BuildPluginsArray();
+
+	LogMessage("[gokz-rts] Cached static info: hostname=%s, version=%s, tickrate=%d", g_cachedHostname, g_cachedVersion, g_cachedTickrate);
+}
+
 //  Payload Building
 
 JSONObject BuildPayload()
@@ -331,14 +383,27 @@ JSONObject BuildServerObject()
 {
 	JSONObject server = new JSONObject();
 
-	// Hostname
-	char hostname[256];
-	ConVar cvHostname = FindConVar("hostname");
-	if (cvHostname != null)
-		cvHostname.GetString(hostname, sizeof(hostname));
+	// Static info (cached once per map)
+	server.SetString("hostname", g_cachedHostname);
+	server.SetString("os", g_osName);
+	server.SetString("version", g_cachedVersion);
+	server.SetInt("tickrate", g_cachedTickrate);
+
+	if (g_cachedSecureAvailable)
+		server.SetBool("secure", g_cachedSecure);
 	else
-		strcopy(hostname, sizeof(hostname), "unknown");
-	server.SetString("hostname", hostname);
+		server.SetNull("secure");
+
+	if (g_cachedMMVersion[0] != '\0')
+		server.SetString("mm_version", g_cachedMMVersion);
+
+	server.SetString("sm_version", SOURCEMOD_VERSION);
+	server.SetBool("gokz_loaded", true);
+
+	if (g_cachedPlugins != null)
+	{
+		server.Set("plugins", g_cachedPlugins);
+	}
 
 	// IP (config override or hostip ConVar)
 	char ip[64];
@@ -361,15 +426,11 @@ JSONObject BuildServerObject()
 	int port = g_serverPort > 0 ? g_serverPort : FindConVar("hostport").IntValue;
 	server.SetInt("port", port);
 
-	// OS
-	server.SetString("os", g_osName);
-
-	// Map
+	// Dynamic info (changes each tick)
 	char map[256];
 	GetCurrentMap(map, sizeof(map));
 	server.SetString("map", map);
 
-	// Player/bot counts
 	int playerCount = 0;
 	int botCount = 0;
 	for (int i = 1; i <= MaxClients; i++)
@@ -386,45 +447,6 @@ JSONObject BuildServerObject()
 	server.SetInt("players", playerCount);
 	server.SetInt("max_players", MaxClients);
 	server.SetInt("bot_count", botCount);
-
-	// Game version ("version" is a command, not a ConVar — use ServerCommandEx)
-	char version[256];
-	ServerCommandEx(version, sizeof(version), "version");
-	int nl = FindCharInString(version, '\n');
-	if (nl != -1)
-		version[nl] = '\0';
-	TrimString(version);
-	server.SetString("version", version);
-
-	// Tickrate
-	int tickrate = RoundToNearest(1.0 / GetTickInterval());
-	server.SetInt("tickrate", tickrate);
-
-	// Secure (VAC status via SteamWorks)
-	if (GetFeatureStatus(FeatureType_Native, "SteamWorks_IsVACEnabled") == FeatureStatus_Available)
-		server.SetBool("secure", SteamWorks_IsVACEnabled());
-	else
-		server.SetNull("secure");
-
-	// MetaMod version
-	ConVar cvMM = FindConVar("metamod_version");
-	if (cvMM != null)
-	{
-		char mmVer[64];
-		cvMM.GetString(mmVer, sizeof(mmVer));
-		server.SetString("mm_version", mmVer);
-	}
-
-	// SourceMod version
-	server.SetString("sm_version", SOURCEMOD_VERSION);
-
-	// GOKZ loaded (obsolete)
-	server.SetBool("gokz_loaded", true);
-
-	// Plugins
-	JSONArray plugins = BuildPluginsArray();
-	server.Set("plugins", plugins);
-	delete plugins;
 
 	return server;
 }
