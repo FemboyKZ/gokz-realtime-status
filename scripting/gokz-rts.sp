@@ -43,8 +43,10 @@ public Plugin myinfo =
 static char g_apiUrl[256];
 static char g_apiKey[256];
 static char g_serverIp[64];
+static char g_tlsCAFile[PLATFORM_MAX_PATH];
 static int g_serverPort;
 static float g_interval = 10.0;
+static int g_failCount;
 
 // Per-player GOKZ tracking
 
@@ -186,6 +188,9 @@ void SendReport()
 	req.Timeout = 10000;
 	req.KeepAlive = true;
 
+	if (g_tlsCAFile[0] != '\0')
+		req.SetTLSCAFile(g_tlsCAFile);
+
 	if (g_apiKey[0] != '\0')
 		req.SetBearerAuth(g_apiKey);
 
@@ -194,7 +199,7 @@ void SendReport()
 
 	if (!sent)
 	{
-		LogError("[gokz-rts] Failed to send request to %s", g_apiUrl);
+		LogError("[gokz-rts] Failed to dispatch request to %s", g_apiUrl);
 		delete req;
 	}
 }
@@ -203,13 +208,25 @@ void OnHttpResponse(HttpRequest http, const char[] body, int statusCode, int bod
 {
 	if (statusCode == 200)
 	{
+		if (g_failCount > 0)
+			LogMessage("[gokz-rts] POST recovered after %d failures", g_failCount);
+		g_failCount = 0;
 		g_successCount++;
 		if (g_successCount == 1 || g_successCount % 30 == 0)
 			LogMessage("[gokz-rts] POST OK (count=%d)", g_successCount);
 	}
+	else if (statusCode == 0)
+	{
+		g_failCount++;
+		LogError("[gokz-rts] POST transport error to %s: %s (fail #%d)", g_apiUrl, body, g_failCount);
+		LogError("[gokz-rts] Possible causes: DNS failure, connection refused, TLS/certificate error, or network unreachable");
+		if (g_tlsCAFile[0] == '\0' && strncmp(g_apiUrl, "https", 5) == 0)
+			LogError("[gokz-rts] HTTPS in use but no tls_ca_file set - Docker containers may lack system CA certs. Set tls_ca_file in config.");
+	}
 	else
 	{
-		LogError("[gokz-rts] POST returned HTTP %d: %.512s", statusCode, body);
+		g_failCount++;
+		LogError("[gokz-rts] POST HTTP %d from %s: %.512s (fail #%d)", statusCode, g_apiUrl, body, g_failCount);
 	}
 
 	// Handle is freed by the extension after this callback returns.
@@ -486,6 +503,8 @@ void LoadConfig()
 				strcopy(g_serverIp, sizeof(g_serverIp), value);
 			else if (StrEqual(key, "server_port"))
 				g_serverPort = StringToInt(value);
+			else if (StrEqual(key, "tls_ca_file"))
+				strcopy(g_tlsCAFile, sizeof(g_tlsCAFile), value);
 			else if (StrEqual(key, "interval"))
 			{
 				g_interval = StringToFloat(value);
