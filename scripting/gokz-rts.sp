@@ -212,7 +212,7 @@ void OnHttpResponse(HttpRequest http, const char[] body, int statusCode, int bod
 		LogError("[gokz-rts] POST returned HTTP %d: %.512s", statusCode, body);
 	}
 
-	delete http;
+	// Handle is freed by the extension after this callback returns.
 }
 
 //  Payload Building
