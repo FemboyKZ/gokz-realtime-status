@@ -120,6 +120,22 @@ public void OnClientPutInServer(int client)
 
 public void OnClientDisconnect(int client)
 {
+	if (!IsFakeClient(client))
+	{
+		// Check if this was the last human player (server will hibernate)
+		int humans = 0;
+		for (int i = 1; i <= MaxClients; i++)
+		{
+			if (i != client && IsClientConnected(i) && !IsFakeClient(i))
+			{
+				humans++;
+				break;
+			}
+		}
+		if (humans == 0)
+			SendHibernate();
+	}
+
 	g_connectTime[client] = 0.0;
 	ResetGokzData(client);
 }
@@ -172,6 +188,65 @@ public Action Timer_InitialReport(Handle timer, any data)
 }
 
 //  Core: HTTP Reporting
+
+void SendHibernate()
+{
+	if (g_apiUrl[0] == '\0')
+		return;
+
+	// Build minimal payload signaling the server is about to hibernate
+	JSONObject payload = new JSONObject();
+
+	char ip[64];
+	if (g_serverIp[0] != '\0')
+		strcopy(ip, sizeof(ip), g_serverIp);
+	else
+	{
+		int hostip = FindConVar("hostip").IntValue;
+		FormatEx(ip, sizeof(ip), "%d.%d.%d.%d",
+			(hostip >> 24) & 0xFF,
+			(hostip >> 16) & 0xFF,
+			(hostip >> 8) & 0xFF,
+			hostip & 0xFF);
+	}
+	int port = g_serverPort > 0 ? g_serverPort : FindConVar("hostport").IntValue;
+
+	payload.SetString("ip", ip);
+	payload.SetInt("port", port);
+
+	// POST to /servers/status/hibernate
+	char url[512];
+	FormatEx(url, sizeof(url), "%s/hibernate", g_apiUrl);
+
+	HttpRequest req = new HttpRequest(url);
+	req.Timeout = 5000;
+	req.FollowRedirect = false;
+
+	if (g_tlsCAFile[0] != '\0')
+		req.SetTLSCAFile(g_tlsCAFile);
+
+	if (g_apiKey[0] != '\0')
+		req.SetBearerAuth(g_apiKey);
+
+	bool sent = req.PostJson(payload, OnHibernateResponse);
+	delete payload;
+
+	if (!sent)
+	{
+		LogError("[gokz-rts] Failed to send hibernate signal to %s", url);
+		delete req;
+	}
+	else
+	{
+		LogMessage("[gokz-rts] Sent hibernate signal (server empty)");
+	}
+}
+
+void OnHibernateResponse(HttpRequest http, const char[] body, int statusCode, int bodySize, any value)
+{
+	if (statusCode != 200)
+		LogError("[gokz-rts] Hibernate signal returned HTTP %d: %.256s", statusCode, body);
+}
 
 void SendReport()
 {
