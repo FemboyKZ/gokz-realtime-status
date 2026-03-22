@@ -310,12 +310,22 @@ JSONObject BuildServerObject()
 	server.SetInt("bot_count", botCount);
 
 	// Game version
-	char version[64];
-	ConVar cvVersion = FindConVar("version");
-	if (cvVersion != null)
-		cvVersion.GetString(version, sizeof(version));
+	// In CSGO, "version" is a console command, not a ConVar.
+	// Use ServerCommandEx to capture its output.
+	char version[256];
+	if (CommandExists("version"))
+	{
+		ServerCommandEx(version, sizeof(version), "version");
+		// Output is multi-line; extract just the first line
+		int nl = FindCharInString(version, '\n');
+		if (nl != -1)
+			version[nl] = '\0';
+		TrimString(version);
+	}
 	else
+	{
 		version[0] = '\0';
+	}
 	server.SetString("version", version);
 
 	// Tickrate
