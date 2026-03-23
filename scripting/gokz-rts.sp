@@ -151,6 +151,13 @@ public void OnClientDisconnect(int client)
 	ResetGokzData(client);
 }
 
+public void SteamWorks_SteamServersConnected()
+{
+	g_cachedSecureAvailable = true;
+	g_cachedSecure = SteamWorks_IsVACEnabled();
+	LogMessage("[gokz-rts] Steam connected, VAC status: %s", g_cachedSecure ? "secure" : "insecure");
+}
+
 //  GOKZ Forwards
 
 public void GOKZ_OnTimerStart_Post(int client, int course)
@@ -333,16 +340,41 @@ void CacheStaticServerInfo()
 		strcopy(g_cachedHostname, sizeof(g_cachedHostname), "unknown");
 
 	// Game version ("version" is a command, not a ConVar)
-	ServerCommandEx(g_cachedVersion, sizeof(g_cachedVersion), "version");
-	int nl = FindCharInString(g_cachedVersion, '\n');
-	if (nl != -1)
-		g_cachedVersion[nl] = '\0';
-	TrimString(g_cachedVersion);
+	// Output format:
+	//   Protocol version 13881 [1575/1575]
+	//   Exe version 1.38.8.1 (csgo)
+	//   Exe build: ...
+	char versionBuf[512];
+	ServerCommandEx(versionBuf, sizeof(versionBuf), "version");
+
+	// Extract "Exe version X.X.X.X" line
+	int pos = StrContains(versionBuf, "Exe version ");
+	if (pos != -1)
+	{
+		pos += 12; // skip "Exe version "
+		int out = 0;
+		while (versionBuf[pos] != '\0' && versionBuf[pos] != ' ' && versionBuf[pos] != '\n' && versionBuf[pos] != '\r' && out < sizeof(g_cachedVersion) - 1)
+		{
+			g_cachedVersion[out++] = versionBuf[pos++];
+		}
+		g_cachedVersion[out] = '\0';
+	}
+	else
+	{
+		// Fallback: use first line
+		strcopy(g_cachedVersion, sizeof(g_cachedVersion), versionBuf);
+		int nl = FindCharInString(g_cachedVersion, '\n');
+		if (nl != -1)
+			g_cachedVersion[nl] = '\0';
+		TrimString(g_cachedVersion);
+	}
 
 	// Tickrate
 	g_cachedTickrate = RoundToNearest(1.0 / GetTickInterval());
 
 	// Secure (VAC status via SteamWorks)
+	// Note: on first map load after server start, Steam may not be connected yet.
+	// SteamWorks_SteamServersConnected forward handles the re-check.
 	g_cachedSecureAvailable = (GetFeatureStatus(FeatureType_Native, "SteamWorks_IsVACEnabled") == FeatureStatus_Available);
 	if (g_cachedSecureAvailable)
 		g_cachedSecure = SteamWorks_IsVACEnabled();
