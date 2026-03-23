@@ -481,6 +481,7 @@ JSONObject BuildServerObject()
 	server.SetInt("max_players", MaxClients);
 	server.SetInt("bot_count", botCount);
 
+	LogMessage("[gokz-rts] OS being sent: %s", g_osName);
 	return server;
 }
 
