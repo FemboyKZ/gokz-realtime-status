@@ -710,7 +710,9 @@ bool ParseConfigLine(const char[] line, char[] key, int keyLen, char[] value, in
 void DetectOS()
 {
 	char path[PLATFORM_MAX_PATH];
-	BuildPath(Path_SM, path, sizeof(path), "");
+	BuildPath(Path_SM, path, sizeof(path), "configs");
+
+	LogMessage("[gokz-rts] DetectOS path: %s (first char: %c / %d)", path, path[0], path[0]);
 
 	if (path[0] == '/')
 		strcopy(g_osName, sizeof(g_osName), "linux");
