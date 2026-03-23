@@ -114,7 +114,7 @@ public void OnMapStart()
 	CacheStaticServerInfo();
 
 	StopReportTimer();
-	g_reportTimer = CreateTimer(g_interval, Timer_Report, _, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
+	g_reportTimer = CreateTimer(g_interval, Timer_Report, _, TIMER_REPEAT);
 
 	// Initial report after short delay to let server stabilize
 	CreateTimer(2.0, Timer_InitialReport);
