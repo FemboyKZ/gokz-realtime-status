@@ -151,11 +151,12 @@ public void OnClientDisconnect(int client)
 	ResetGokzData(client);
 }
 
-public void SteamWorks_SteamServersConnected()
+public int SteamWorks_SteamServersConnected()
 {
 	g_cachedSecureAvailable = true;
 	g_cachedSecure = SteamWorks_IsVACEnabled();
 	LogMessage("[gokz-rts] Steam connected, VAC status: %s", g_cachedSecure ? "secure" : "insecure");
+	return 0;
 }
 
 //  GOKZ Forwards
