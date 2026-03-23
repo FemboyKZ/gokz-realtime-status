@@ -481,7 +481,6 @@ JSONObject BuildServerObject()
 	server.SetInt("max_players", MaxClients);
 	server.SetInt("bot_count", botCount);
 
-	LogMessage("[gokz-rts] OS being sent: %s", g_osName);
 	return server;
 }
 
@@ -709,12 +708,9 @@ bool ParseConfigLine(const char[] line, char[] key, int keyLen, char[] value, in
 
 void DetectOS()
 {
-	char path[PLATFORM_MAX_PATH];
-	BuildPath(Path_SM, path, sizeof(path), "configs");
-
-	LogMessage("[gokz-rts] DetectOS path: %s (first char: %c / %d)", path, path[0], path[0]);
-
-	if (path[0] == '/')
+	// BuildPath returns relative paths in some server configurations,
+	// so check for /proc/self which only exists on Linux
+	if (DirExists("/proc/self"))
 		strcopy(g_osName, sizeof(g_osName), "linux");
 	else
 		strcopy(g_osName, sizeof(g_osName), "windows");
