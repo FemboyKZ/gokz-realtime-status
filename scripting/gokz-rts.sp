@@ -83,7 +83,6 @@ static JSONArray g_cachedPlugins = null;
 public void OnPluginStart()
 {
 	LoadConfig();
-	DetectOS();
 
 	if (g_apiUrl[0] == '\0')
 	{
@@ -333,6 +332,9 @@ void OnHttpResponse(HttpRequest http, const char[] body, int statusCode, int bod
 
 void CacheStaticServerInfo()
 {
+	// OS detection (done here so status command is available)
+	DetectOS();
+
 	// Hostname
 	ConVar cvHostname = FindConVar("hostname");
 	if (cvHostname != null)
@@ -708,12 +710,33 @@ bool ParseConfigLine(const char[] line, char[] key, int keyLen, char[] value, in
 
 void DetectOS()
 {
-	// BuildPath returns relative paths in some server configurations,
-	// so check for /proc/self which only exists on Linux
-	if (DirExists("/proc/self"))
-		strcopy(g_osName, sizeof(g_osName), "linux");
-	else
-		strcopy(g_osName, sizeof(g_osName), "windows");
+	// Parse OS from "status" command output which contains a line like:
+	//   os      :  Linux
+	//   os      :  Windows
+	char statusBuf[2048];
+	ServerCommandEx(statusBuf, sizeof(statusBuf), "status");
+
+	int pos = StrContains(statusBuf, "\nos", false);
+	if (pos != -1)
+	{
+		// Advance past the colon
+		int colon = StrContains(statusBuf[pos], ":");
+		if (colon != -1)
+		{
+			char osLine[64];
+			strcopy(osLine, sizeof(osLine), statusBuf[pos + colon + 1]);
+			TrimString(osLine);
+
+			if (StrContains(osLine, "Linux", false) != -1)
+				strcopy(g_osName, sizeof(g_osName), "linux");
+			else
+				strcopy(g_osName, sizeof(g_osName), "windows");
+			return;
+		}
+	}
+
+	// Fallback: assume linux (all our servers run Linux)
+	strcopy(g_osName, sizeof(g_osName), "linux");
 }
 
 void StopReportTimer()
