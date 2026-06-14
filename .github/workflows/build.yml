@@ -36,8 +36,10 @@ jobs:
         run: |
           mkdir -p staging/addons/sourcemod/plugins
           mkdir -p staging/addons/sourcemod/configs
+          mkdir -p staging/addons/sourcemod/scripting/include
           cp build/fkz-api.smx staging/addons/sourcemod/plugins/
           cp configs/fkz-api.cfg staging/addons/sourcemod/configs/
+          cp scripting/include/fkz-api.inc staging/addons/sourcemod/scripting/include/
 
       - name: Upload artifact
         uses: actions/upload-artifact@v7

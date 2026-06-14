@@ -47,6 +47,12 @@ void LoadConfig()
     }
 
     delete file;
+
+    // api_url is the API root (e.g. https://api.femboykz.com).
+    // Drop any trailing slash so endpoint paths concatenate cleanly.
+    int len = strlen(g_apiUrl);
+    if (len > 0 && g_apiUrl[len - 1] == '/')
+        g_apiUrl[len - 1] = '\0';
 }
 
 bool ParseConfigLine(const char[] line, char[] key, int keyLen, char[] value, int valueLen)
