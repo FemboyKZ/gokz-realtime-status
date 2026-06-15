@@ -16,6 +16,8 @@ public void OnPluginStart()
     LogMessage("[FKZ] v%s loaded - reporting to %s every %.0fs (key=%s)",
                PLUGIN_VERSION, g_apiUrl, g_interval, g_apiKey[0] != '\0' ? "set" : "NOT SET");
 
+    SetupCrossChat();
+
     for (int i = 1; i <= MaxClients; i++)
     {
         if (IsClientConnected(i) && !IsFakeClient(i))
@@ -48,7 +50,8 @@ public void OnClientPutInServer(int client)
     if (IsFakeClient(client))
         return;
 
-    g_connectTime[client] = GetGameTime();
+    g_connectTime[client]    = GetGameTime();
+    g_crossChatMuted[client] = false;
     ResetGokzData(client);
     InitModePlaytime(client);
 }

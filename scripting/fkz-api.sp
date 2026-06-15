@@ -27,7 +27,7 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-#define PLUGIN_VERSION "2.2.1"
+#define PLUGIN_VERSION "2.3.0"
 #define MODE_NAME_LEN  32
 
 #define FKZ_API_LIBRARY
@@ -51,5 +51,6 @@ public Plugin myinfo =
 #include "fkz-api/payload.sp"
 #include "fkz-api/http.sp"
 #include "fkz-api/report.sp"
+#include "fkz-api/chat.sp"
 #include "fkz-api/events.sp"
 #include "fkz-api/natives.sp"
