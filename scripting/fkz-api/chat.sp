@@ -157,11 +157,11 @@ void OnChatStream(HttpRequest http, const char[] body, int statusCode, int bodyS
         JSON doc = view_as<JSON>(JSON.Parse(body));
         if (doc != null)
         {
-            int cursor = doc.PtrGetInt("/cursor");
-            if (cursor >= g_chatCursor)
-                g_chatCursor = cursor;
+            // Trust the server's cursor (only one poll is in flight at a time, so replies arrive in order).
+            // Adopting it unconditionally lets us recover if the API restarted and reset its cursor below ours.
+            g_chatCursor = doc.PtrGetInt("/cursor");
 
-            int count = doc.PtrGetLength("/messages");
+            int count    = doc.PtrGetLength("/messages");
             for (int i = 0; i < count; i++)
             {
                 char path[64];
@@ -188,7 +188,7 @@ void OnChatStream(HttpRequest http, const char[] body, int statusCode, int bodyS
 
 void PrintCrossChat(const char[] alias, const char[] name, const char[] message)
 {
-    char line[640];
+    char line[768];
     FormatEx(line, sizeof(line), " \x0E[%s]\x01 %s\x01: %s", alias, name, message);
 
     for (int i = 1; i <= MaxClients; i++)
