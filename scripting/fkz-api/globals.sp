@@ -23,8 +23,19 @@ enum struct GokzData
     int   teleports;
 }
 
-GokzData  g_gokzData[MAXPLAYERS + 1];
-float     g_connectTime[MAXPLAYERS + 1];
+GokzData g_gokzData[MAXPLAYERS + 1];
+float    g_connectTime[MAXPLAYERS + 1];
+
+float    g_modePlaytime[MAXPLAYERS + 1][MODE_COUNT];
+float    g_lastModeSample[MAXPLAYERS + 1];
+int      g_currentMode[MAXPLAYERS + 1];
+
+// GOKZ mode index -> API playtime_modes key.
+char     gC_ModeApiKeys[MODE_COUNT][] = {
+    "kz_vanilla",
+    "kz_simple",
+    "kz_timer"
+};
 
 Handle    g_reportTimer = INVALID_HANDLE;
 char      g_osName[16];

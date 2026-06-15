@@ -22,7 +22,10 @@ public void OnPluginStart()
         {
             g_connectTime[i] = GetGameTime() - GetClientTime(i);
             if (IsClientInGame(i))
+            {
                 UpdateGokzData(i);
+                InitModePlaytime(i);
+            }
         }
     }
 }
@@ -47,6 +50,7 @@ public void OnClientPutInServer(int client)
 
     g_connectTime[client] = GetGameTime();
     ResetGokzData(client);
+    InitModePlaytime(client);
 }
 
 public void OnClientDisconnect(int client)
@@ -68,6 +72,8 @@ public void OnClientDisconnect(int client)
 
     g_connectTime[client] = 0.0;
     ResetGokzData(client);
+    ResetModePlaytimeDeltas(client);
+    g_lastModeSample[client] = 0.0;
 }
 
 public int SteamWorks_SteamServersConnected()
@@ -106,7 +112,11 @@ public void GOKZ_OnResume_Post(int client)
 public void GOKZ_OnOptionChanged(int client, const char[] option, any newValue)
 {
     if (StrEqual(option, "GOKZ - Mode"))
+    {
+        // Attribute time spent so far to the old mode before it switches.
+        SampleModePlaytime(client);
         UpdateGokzData(client);
+    }
 }
 
 public Action Timer_Report(Handle timer, any data)

@@ -194,11 +194,38 @@ JSONArray BuildPlayersArray()
             delete gokz;
         }
 
+        JSONObject playtimeModes = BuildModePlaytimeObject(i);
+        if (playtimeModes != null)
+        {
+            player.Set("playtime_modes", playtimeModes);
+            delete playtimeModes;
+        }
+
         players.Push(player);
         delete player;
     }
 
     return players;
+}
+
+// Builds the per-mode playtime delta object (seconds accrued since the last report).
+// Returns null when no mode time has accrued, so the field is omitted.
+JSONObject BuildModePlaytimeObject(int client)
+{
+    JSONObject obj = null;
+
+    for (int m = 0; m < MODE_COUNT; m++)
+    {
+        if (g_modePlaytime[client][m] <= 0.0)
+            continue;
+
+        if (obj == null)
+            obj = new JSONObject();
+
+        obj.SetFloat(gC_ModeApiKeys[m], g_modePlaytime[client][m]);
+    }
+
+    return obj;
 }
 
 JSONArray BuildPluginsArray()

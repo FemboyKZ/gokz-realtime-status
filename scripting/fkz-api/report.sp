@@ -10,10 +10,20 @@ void SendReport()
     for (int i = 1; i <= MaxClients; i++)
     {
         if (IsClientInGame(i) && !IsFakeClient(i))
+        {
             UpdateGokzData(i);
+            SampleModePlaytime(i);    // flush elapsed time into the active mode before snapshotting
+        }
     }
 
     JSONObject payload = BuildPayload();
+
+    // Per-mode deltas are now captured in the payload, reset to begin a new interval.
+    for (int i = 1; i <= MaxClients; i++)
+    {
+        if (IsClientInGame(i) && !IsFakeClient(i))
+            ResetModePlaytimeDeltas(i);
+    }
 
     FKZ_PostServerStatus(payload, OnReportResponse);
     delete payload;
